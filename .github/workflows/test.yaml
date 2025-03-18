@@ -2,6 +2,12 @@ name: Release Chart
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Chart.yaml'
+      - 'values**.yaml'
 
 jobs:
   release:
@@ -14,24 +20,69 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if Chart file has changed
+      - name: Check if Chart file has changed:
         id: chartchanges
         uses: dorny/paths-filter@v3
         with:
           filters: |
             src:
-              - 'Chart.yaml'
+              - 'Chart.yaml' 
 
-      - name: Set Default
-        if: steps.chartchanges.outputs.src == 'true'
-        id: default
-        run: echo "default=default" >> $GITHUB_ENV
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.13.3
 
-      - name: Set Rev
+      - name: Get Latest Release
         if: steps.chartchanges.outputs.src == 'false'
-        id: default
-        run: echo "default=rev" >> $GITHUB_ENV
+        id: latest
+        uses: pozetroninc/github-action-get-latest-release@v0.8.0
+        with:
+          owner: ${{ github.repository_owner }}
+          repo: ${{ github.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Print Default
+      - name: Set default valsrev var
+        if: steps.chartchanges.outputs.src == 'true'
         run: |
-          echo "Default is ${{ steps.default.outputs.default }}"
+          echo "VALREV=1" >> $GITHUB_ENV
+
+      - name: Determine values revision
+        if: steps.chartchanges.outputs.src == 'false'
+        id: valsrev
+        run: |
+          VR=$(echo ${{ steps.latest.outputs.release }} | awk -F'-' '{print $2}')
+          if [[ $? -ne 0 || ${VR} = "" ]]; then
+            echo "Failed to determine values revision"
+            exit 1
+          fi
+          echo "VALREV=$VR" >> $GITHUB_ENV
+
+
+      - name: Check if values files have changed
+        if: steps.chartchanges.outputs.src == 'false'
+        id: valchanges
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            src:
+              - 'values**.yaml'
+
+      - name: Bump valsrev
+        if: steps.valchanges.outputs.src == 'true'
+        run: |
+          echo "VALREV=$((VALREV+1))
+
+      - name: Get Chart Version
+        uses: mikefarah/yq@v4
+        id: chart-version
+        with:
+          cmd: yq '.dependencies[]|select(.name == "cloudnative-pg").version' Chart.yaml
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          make_latest: true
+          name: "v${{ steps.chart-version.outputs.result }}-${{ env.VALREV }}"
+          tag_name: "v${{ steps.chart-version.outputs.result }}-${{ env.VALREV }}"
