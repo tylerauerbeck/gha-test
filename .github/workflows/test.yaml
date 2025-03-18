@@ -42,6 +42,8 @@ jobs:
       - name: Get latest release
         if: steps.chartchanges.outputs.src == 'false'
         id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           LATEST=$(gh release list --json tagName,createdAt -q '[.[] | select(.tagName|test("^v${{ steps.chart-version.outputs.result }}-.*"))][0] | .tagName')
           echo "LATEST=${LATEST}" >> $GITHUB_ENV
