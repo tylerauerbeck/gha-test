@@ -48,7 +48,6 @@ jobs:
           LATEST=$(gh release list --json tagName,createdAt -q '[.[] | select(.tagName|test("^v${{ steps.chart-version.outputs.result }}-.*"))][0] | .tagName')
           echo "LATEST=${LATEST}" >> $GITHUB_ENV
 
-
       - name: Set default valsrev var
         if: steps.chartchanges.outputs.src == 'true'
         run: |
@@ -58,7 +57,7 @@ jobs:
         if: steps.chartchanges.outputs.src == 'false'
         id: valsrev
         run: |
-          VR=$(echo ${{ steps.latest.outputs.release }} | awk -F'-' '{print $2}')
+          VR=$(echo ${LATEST} | awk -F'-' '{print $2}')
           if [[ $? -ne 0 || ${VR} = "" ]]; then
             echo "Failed to determine values revision"
             exit 1
