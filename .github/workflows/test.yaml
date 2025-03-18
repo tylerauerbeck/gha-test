@@ -28,19 +28,24 @@ jobs:
             src:
               - 'Chart.yaml' 
 
+      - name: Get Chart Version
+        uses: mikefarah/yq@v4
+        id: chart-version
+        with:
+          cmd: yq '.dependencies[]|select(.name == "cloudnative-pg").version' Chart.yaml
+
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
           version: v3.13.3
 
-      - name: Get Latest Release
+      - name: Get latest release
         if: steps.chartchanges.outputs.src == 'false'
         id: latest
-        uses: pozetroninc/github-action-get-latest-release@v0.8.0
-        with:
-          owner: ${{ github.repository_owner }}
-          repo: ${{ github.repository }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST=$(gh release list --json tagName,createdAt -q '[.[] | select(.tagName|test("^v${{ steps.chart-version.outputs.result }}-.*"))][0] | .tagName')
+          echo "LATEST=${LATEST}" >> $GITHUB_ENV
+
 
       - name: Set default valsrev var
         if: steps.chartchanges.outputs.src == 'true'
