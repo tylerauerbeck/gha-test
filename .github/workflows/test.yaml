@@ -77,7 +77,7 @@ jobs:
       - name: Bump valsrev
         if: steps.valchanges.outputs.src == 'true'
         run: |
-          echo "VALREV=$((VALREV+1))
+          echo "VALREV=$((VALREV+1))" >> $GITHUB_ENV
 
       - name: Release
         uses: softprops/action-gh-release@v2
