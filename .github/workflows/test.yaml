@@ -20,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check if Chart file has changed:
+      - name: Check if Chart file has changed
         id: chartchanges
         uses: dorny/paths-filter@v3
         with:
